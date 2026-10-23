@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Shift Log" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>🚌 Shift Log</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f0f4ff; color: #1e293b; font-family: 'DM Mono', 'Courier New', monospace; min-height: 100vh; }
+
+    .header { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 16px 16px 12px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(37,99,235,0.35); }
+    .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .header-icon { font-size: 30px; }
+    .header-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+    .header-sub { font-size: 12px; color: rgba(255,255,255,0.7); letter-spacing: 2px; }
+    .shift-count { margin-left: auto; background: #fbbf24; color: #1e293b; border-radius: 20px; padding: 3px 12px; font-size: 13px; font-weight: 700; }
+    .nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-btn { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 7px 14px; font-size: 13px; font-family: inherit; font-weight: 700; cursor: pointer; letter-spacing: 1px; white-space: nowrap; flex-shrink: 0; }
+    .nav-btn.active { background: #fff; color: #2563eb; border-color: #fff; }
+
+    .main { padding: 16px; max-width: 600px; margin: 0 auto; }
+
+    .card { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
+    .section-title { font-size: 15px; font-weight: 700; color: #2563eb; margin-bottom: 16px; letter-spacing: 1px; text-transform: uppercase; }
+
+    .field { margin-bottom: 12px; }
+    .field label { font-size: 12px; color: #64748b; letter-spacing: 2px; display: block; margin-bottom: 4px; text-transform: uppercase; font-weight: 700; }
+    .field input, .field textarea { width: 100%; background: #f8faff; border: 1.5px solid #dbeafe; border-radius: 10px; padding: 11px 13px; color: #1e293b; font-family: inherit; font-size: 16px; outline: none; }
+    .field input:focus, .field textarea:focus { border-color: #2563eb; background: #eff6ff; }
+    .field textarea { resize: none; height: 70px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .day-display { background: #f8faff; border: 1.5px solid #dbeafe; border-radius: 10px; padding: 11px 13px; font-size: 16px; color: #94a3b8; }
+    .day-display.filled { color: #2563eb; font-weight: 700; }
+
+    .info-box { display: none; margin-top: 6px; border-radius: 10px; padding: 9px 13px; font-size: 15px; align-items: center; gap: 8px; }
+    .info-box.show { display: flex; }
+    .info-box.blue { background: #eff6ff; border: 1.5px solid #93c5fd; color: #1d4ed8; }
+    .info-box.green { background: #f0fdf4; border: 1.5px solid #86efac; color: #15803d; }
+
+    /* Pay breakdown box */
+    .pay-breakdown { display: none; margin-top: 10px; background: #f5f3ff; border: 1.5px solid #c4b5fd; border-radius: 12px; padding: 12px; }
+    .pay-breakdown.show { display: block; }
+    .pb-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 15px; }
+    .pb-row + .pb-row { border-top: 1px solid #ede9fe; }
+    .pb-label { color: #64748b; }
+    .pb-value { font-weight: 700; color: #1e293b; }
+    .pb-total { background: linear-gradient(135deg, #2563eb, #7c3aed); border-radius: 8px; padding: 9px 13px; display: flex; justify-content: space-between; margin-top: 8px; }
+    .pb-total span { color: #fff; font-weight: 700; font-size: 16px; }
+
+    .save-btn { width: 100%; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 1px; transition: all 0.3s; margin-top: 4px; box-shadow: 0 4px 15px rgba(37,99,235,0.3); }
+    .save-btn.saved { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .set-btn { background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border: none; border-radius: 10px; padding: 11px 18px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .export-btn { width: 100%; background: linear-gradient(135deg, #0891b2, #2563eb); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 10px; }
+
+    .search-input { width: 100%; background: #fff; border: 1.5px solid #dbeafe; border-radius: 12px; padding: 12px 14px; color: #1e293b; font-family: inherit; font-size: 15px; outline: none; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(37,99,235,0.06); }
+
+    /* SHIFT CARD */
+    .shift-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; position: relative; box-shadow: 0 2px 10px rgba(37,99,235,0.07); border-left: 4px solid #2563eb; }
+    .shift-card.overtime { border-left-color: #f59e0b; }
+    .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .date-badge { background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border-radius: 8px; padding: 5px 12px; font-size: 15px; font-weight: 700; }
+    .day-label { color: #64748b; font-size: 14px; font-weight: 600; }
+    .duration-label { margin-left: auto; color: #16a34a; font-size: 13px; font-weight: 700; background: #f0fdf4; padding: 3px 9px; border-radius: 6px; }
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .card-field-label { font-size: 11px; color: #94a3b8; letter-spacing: 2px; margin-bottom: 2px; text-transform: uppercase; }
+    .card-field-value { font-size: 15px; font-weight: 700; color: #1e293b; }
+
+    /* Pay summary on card */
+    .card-pay-block { background: #f5f3ff; border-radius: 10px; padding: 10px 12px; border: 1px solid #ddd6fe; }
+    .card-pay-row { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; }
+    .card-pay-row .lbl { color: #64748b; }
+    .card-pay-row .val { font-weight: 700; color: #1e293b; }
+    .card-pay-row.total { border-top: 1px solid #c4b5fd; margin-top: 4px; padding-top: 6px; }
+    .card-pay-row.total .lbl { color: #2563eb; font-weight: 700; }
+    .card-pay-row.total .val { color: #16a34a; font-size: 16px; }
+    .ot-badge { background: #fef3c7; color: #92400e; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; margin-left: 6px; }
+
+    .card-notes { margin-top: 8px; background: #fefce8; border-radius: 8px; padding: 8px 11px; font-size: 14px; color: #854d0e; border-left: 3px solid #fbbf24; }
+    .delete-btn { position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: #cbd5e1; font-size: 20px; cursor: pointer; padding: 4px; }
+    .delete-btn:hover { color: #ef4444; }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .stat-box { background: linear-gradient(135deg, #eff6ff, #f5f3ff); border: 1.5px solid #ddd6fe; border-radius: 12px; padding: 14px; text-align: center; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #2563eb; }
+    .stat-value.green { color: #16a34a; }
+    .stat-label { font-size: 12px; color: #64748b; letter-spacing: 1px; margin-top: 3px; text-transform: uppercase; }
+    .period-row { background: #f8faff; border: 1px solid #dbeafe; border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
+    .period-top { display: flex; align-items: center; margin-bottom: 4px; }
+    .period-label { font-size: 14px; color: #475569; flex: 1; font-weight: 600; }
+    .period-pay { font-size: 15px; color: #16a34a; font-weight: 700; }
+    .period-detail { display: flex; gap: 12px; font-size: 13px; color: #94a3b8; flex-wrap: wrap; }
+    .fortnight-badge { background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; margin-bottom: 8px; display: inline-block; }
+
+    .rate-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+    .rate-row .field { flex: 1; margin-bottom: 0; }
+    .rate-display { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 12px 13px; font-size: 16px; color: #15803d; font-weight: 700; text-align: center; }
+
+    .export-note { font-size: 13px; color: #94a3b8; text-align: center; line-height: 1.6; }
+    .empty { text-align: center; color: #94a3b8; margin-top: 50px; font-size: 16px; line-height: 2; }
+    .empty .emoji { font-size: 44px; margin-bottom: 10px; }
+    .hidden { display: none; }
+
+    /* PROFILE */
+    .profile-hero {
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      border-radius: 16px; padding: 24px 20px; margin-bottom: 14px;
+      text-align: center; box-shadow: 0 4px 20px rgba(37,99,235,0.25);
+    }
+    .profile-avatar {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(255,255,255,0.25); border: 3px solid rgba(255,255,255,0.6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px; margin: 0 auto 12px;
+    }
+    .profile-name { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .profile-id { font-size: 14px; color: rgba(255,255,255,0.75); letter-spacing: 2px; }
+    .profile-depot { font-size: 14px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+    .profile-detail-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .profile-detail-row:last-child { border-bottom: none; }
+    .profile-detail-icon { font-size: 18px; width: 32px; text-align: center; flex-shrink: 0; }
+    .profile-detail-label { font-size: 12px; color: #94a3b8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+    .profile-detail-value { font-size: 16px; font-weight: 600; color: #1e293b; }
+    .profile-detail-value.empty { color: #cbd5e1; font-style: italic; font-weight: 400; }
+    .edit-profile-btn {
+      width: 100%; background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: #fff; border: none; border-radius: 12px; padding: 12px;
+      font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+      margin-top: 4px; box-shadow: 0 4px 15px rgba(37,99,235,0.25);
+    }
+    .cancel-btn {
+      width: 100%; background: #f1f5f9; color: #64748b;
+      border: none; border-radius: 12px; padding: 12px;
+      font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px;
+    }
+    .divider { height: 1px; background: #e2e8f0; margin: 12px 0; }
+    .hint { font-size: 13px; color: #94a3b8; line-height: 1.7; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="header-icon">🚌</span>
+    <div>
+      <div class="header-title">SHIFT LOG</div>
+      <div class="header-sub">BUS DRIVER WORK RECORD</div>
+    </div>
+    <div class="shift-count" id="shiftCount">0 shifts</div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" id="navAdd" onclick="showView('add')">➕ Add</button>
+    <button class="nav-btn" id="navLog" onclick="showView('log')">📋 Log</button>
+    <button class="nav-btn" id="navStats" onclick="showView('stats')">📊 Stats</button>
+    <button class="nav-btn" id="navPay" onclick="showView('pay')">💵 Pay</button>
+    <button class="nav-btn" id="navExport" onclick="showView('export')">📤 Export</button>
+    <button class="nav-btn" id="navProfile" onclick="showView('profile')">👤 Profile</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ADD -->
+  <div id="viewAdd">
+    <div id="backupReminder" style="display:none;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:10px;">
+      <span style="font-size:20px;">💾</span>
+      <div style="flex:1;font-size:13px;color:#c2410c;font-weight:600;line-height:1.5;">Backup overdue! Export your shifts so you don't lose them.</div>
+      <button onclick="showView('export')" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;">Export Now</button>
+    </div>
+    <div class="card">
+      <div class="section-title">🚌 New Shift Entry</div>
+
+      <div class="field">
+        <label>Date (DD / MM / YYYY)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;">
+          <select id="fDay" onchange="onDateChange()" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;padding:10px 8px;color:#1e293b;font-family:inherit;font-size:14px;outline:none;">
+            <option value="">DD</option>
+          </select>
+          <select id="fMonth" onchange="onDateChange()" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;padding:10px 8px;color:#1e293b;font-family:inherit;font-size:14px;outline:none;">
+            <option value="">MM</option>
+            <option value="01">01 - Jan</option><option value="02">02 - Feb</option><option value="03">03 - Mar</option>
+            <option value="04">04 - Apr</option><option value="05">05 - May</option><option value="06">06 - Jun</option>
+            <option value="07">07 - Jul</option><option value="08">08 - Aug</option><option value="09">09 - Sep</option>
+            <option value="10">10 - Oct</option><option value="11">11 - Nov</option><option value="12">12 - Dec</option>
+          </select>
+          <select id="fYear" onchange="onDateChange()" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;padding:10px 8px;color:#1e293b;font-family:inherit;font-size:14px;outline:none;">
+            <option value="">YYYY</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Day (auto)</label><div class="day-display" id="dayDisplay">—</div></div>
+      <div class="two-col">
+        <div class="field"><label>Bus No.</label><input type="text" id="fBusNo" placeholder="e.g. 813" /></div>
+        <div class="field"><label>Shift</label><input type="text" id="fShift" placeholder="e.g. 6524" /></div>
+      </div>
+      <div class="two-col">
+        <div class="field"><label>Start Time</label><input type="time" id="fStart" oninput="updatePayPreview()" /></div>
+        <div class="field"><label>Finish Time</label><input type="time" id="fFinish" oninput="updatePayPreview()" /></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <label>HOD</label>
+        <input type="text" id="fHod" placeholder="e.g. 7H41" oninput="onHodChange(); updatePayPreview();" />
+        <div class="info-box blue" id="hodDecimal"><span>🔢</span><span id="hodDecimalText"></span></div>
+      </div>
+
+      <div class="field">
+        <label>Pay Rate for this shift (A$/hr)</label>
+        <input type="number" id="fPayRate" placeholder="e.g. 28.50" step="0.01" min="0" oninput="updatePayPreview()" />
+      </div>
+
+      <!-- Live pay breakdown -->
+      <div class="pay-breakdown" id="payBreakdown">
+        <div class="pb-row"><span class="pb-label">Actual hours worked (HOD)</span><span class="pb-value" id="pbActual">—</span></div>
+        <div class="pb-row"><span class="pb-label">Guaranteed hours (paid)</span><span class="pb-value" id="pbGuaranteed">4h 00m</span></div>
+        <div class="pb-row"><span class="pb-label">Overtime hours</span><span class="pb-value" id="pbOT" style="color:#f59e0b">—</span></div>
+        <div class="pb-row"><span class="pb-label">Rate</span><span class="pb-value" id="pbRate">—</span></div>
+        <div class="pb-total">
+          <span>Est. Pay</span>
+          <span id="pbTotal">A$0.00</span>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:12px"><label>Notes</label><textarea id="fNotes" placeholder="Any notes about this shift..."></textarea></div>
+      <button class="save-btn" id="saveBtn" onclick="saveShift()">SAVE SHIFT</button>
+      <button type="button" onclick="resetForm()" style="width:100%;margin-top:8px;background:#f1f5f9;color:#64748b;border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">🗑 Clear Form</button>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div id="viewLog" class="hidden">
+    <input class="search-input" id="searchInput" placeholder="🔍  Search date, bus, shift, day..." oninput="renderLog()" />
+    <div id="shiftList"></div>
+  </div>
+
+  <!-- STATS -->
+  <div id="viewStats" class="hidden"><div id="statsContent"></div></div>
+
+  <!-- PAY SETTINGS -->
+  <div id="viewPay" class="hidden">
+    <div class="card">
+      <div class="section-title">💵 Default Pay Rate (AUD)</div>
+      <div class="rate-row">
+        <div class="field"><label>Default Hourly Rate (A$)</label><input type="number" id="payRateInput" placeholder="e.g. 28.50" step="0.01" min="0" /></div>
+        <button class="set-btn" onclick="savePayRate()">SET</button>
+      </div>
+      <div class="rate-display" id="rateDisplay">No default rate set</div>
+      <p class="hint">This pre-fills the rate on the Add Shift form. You can change it per shift individually. Pay = max(4hrs, actual HOD hrs) × rate. Overtime = hours beyond 4.</p>
+    </div>
+    <div class="card">
+      <div class="section-title">⚙️ Fortnight Settings</div>
+      <div class="field">
+        <label>First day of current fortnight (DD / MM / YYYY)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px;">
+          <select id="fnDay" onchange="saveFortnightStart()" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;padding:10px 8px;color:#1e293b;font-family:inherit;font-size:14px;outline:none;">
+            <option value="">DD</option>
+          </select>
+          <select id="fnMonth" onchange="saveFortnightStart()" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;padding:10px 8px;color:#1e293b;font-family:inherit;font-size:14px;outline:none;">
+            <option value="">MM</option>
+            <option value="01">01 - Jan</option><option value="02">02 - Feb</option><option value="03">03 - Mar</option>
+            <option value="04">04 - Apr</option><option value="05">05 - May</option><option value="06">06 - Jun</option>
+            <option value="07">07 - Jul</option><option value="08">08 - Aug</option><option value="09">09 - Sep</option>
+            <option value="10">10 - Oct</option><option value="11">11 - Nov</option><option value="12">12 - Dec</option>
+          </select>
+          <select id="fnYear" onchange="saveFortnightStart()" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;padding:10px 8px;color:#1e293b;font-family:inherit;font-size:14px;outline:none;">
+            <option value="">YYYY</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint">Set this once to the Monday of your first fortnight week. The app will automatically group your shifts into fortnights in the Stats page.</p>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div id="viewExport" class="hidden">
+    <!-- Warning banner -->
+    <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start;">
+      <span style="font-size:22px;">⚠️</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#c2410c;margin-bottom:4px;">DO NOT clear browser data!</div>
+        <div style="font-size:13px;color:#9a3412;line-height:1.6;">Clearing your browser history, cache, or site data <strong>will permanently delete all your shifts</strong>. Always export a CSV backup first before clearing anything.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">📤 Export Shifts</div>
+      <div id="lastBackupNote" style="margin-bottom:12px;"></div>
+      <button class="export-btn" onclick="exportCSV()">⬇️ Download as CSV (Excel)</button>
+      <div class="export-note">Opens in Excel, Google Sheets, or Numbers.<br/>Includes guaranteed hrs, overtime hrs, pay rate per shift, and total AUD pay.</div>
+    </div>
+    <div class="card">
+      <div class="section-title">📥 Import Shifts</div>
+      <p style="font-size:14px;color:#64748b;margin-bottom:14px;line-height:1.6;">Use this to restore your shift data on a new phone. Select the CSV file you exported previously.</p>
+      <label for="importFile" style="display:block;width:100%;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;letter-spacing:1px;box-sizing:border-box;">
+        📂 Choose CSV File
+      </label>
+      <input type="file" id="importFile" accept=".csv" onchange="importCSV(event)" style="display:none;" />
+      <div id="importStatus" style="display:none;margin-top:12px;border-radius:10px;padding:12px;font-size:14px;font-weight:600;text-align:center;"></div>
+      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-top:10px;line-height:1.6;">⚠️ Importing will <strong>add</strong> to your existing shifts.<br/>Duplicates on the same date will be skipped.</p>
+    </div>
+  </div>
+
+  <!-- PROFILE VIEW -->
+  <div id="viewProfile" class="hidden">
+    <!-- Display mode -->
+    <div id="profileDisplay">
+      <div class="profile-hero">
+        <div class="profile-avatar">🚌</div>
+        <div class="profile-name" id="pdName">Your Name</div>
+        <div class="profile-id" id="pdEmpId">Employee ID: —</div>
+        <div class="profile-depot" id="pdDepot">Depot: —</div>
+      </div>
+      <div class="card">
+        <div class="section-title">👤 Driver Details</div>
+        <div class="profile-detail-row">
+          <div class="profile-detail-icon">🪪</div>
+          <div><div class="profile-detail-label">Licence Number</div><div class="profile-detail-value" id="pdLicence">—</div></div>
+        </div>
+        <div class="profile-detail-row">
+          <div class="profile-detail-icon">📞</div>
+          <div><div class="profile-detail-label">Contact Number</div><div class="profile-detail-value" id="pdPhone">—</div></div>
+        </div>
+        <div class="profile-detail-row">
+          <div class="profile-detail-icon">✉️</div>
+          <div><div class="profile-detail-label">Email</div><div class="profile-detail-value" id="pdEmail">—</div></div>
+        </div>
+        <div class="profile-detail-row">
+          <div class="profile-detail-icon">🏢</div>
+          <div><div class="profile-detail-label">Depot / Garage</div><div class="profile-detail-value" id="pdDepot2">—</div></div>
+        </div>
+        <button class="edit-profile-btn" onclick="toggleProfileEdit(true)">✏️ Edit Profile</button>
+      </div>
+    </div>
+
+    <!-- Edit mode -->
+    <div id="profileEdit" class="hidden">
+      <div class="card">
+        <div class="section-title">✏️ Edit Profile</div>
+        <div class="field"><label>Full Name</label><input type="text" id="peName" placeholder="e.g. John Smith" /></div>
+        <div class="two-col">
+          <div class="field"><label>Employee ID</label><input type="text" id="peEmpId" placeholder="e.g. EMP1234" /></div>
+          <div class="field"><label>Depot / Garage</label><input type="text" id="peDepot" placeholder="e.g. Kingsgrove" /></div>
+        </div>
+        <div class="field"><label>Licence Number</label><input type="text" id="peLicence" placeholder="e.g. DL-123456" /></div>
+        <div class="field"><label>Contact Number</label><input type="tel" id="pePhone" placeholder="e.g. 0412 345 678" /></div>
+        <div class="field"><label>Email</label><input type="email" id="peEmail" placeholder="e.g. john@email.com" /></div>
+        <button class="save-btn" onclick="saveProfile()">SAVE PROFILE</button>
+        <button class="cancel-btn" onclick="toggleProfileEdit(false)">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const STORAGE_KEY  = 'bus-shift-log-v2';
+  const PAY_KEY      = 'bus-shift-payrate';
+  const FN_KEY       = 'bus-fortnight-start';
+  const PROFILE_KEY  = 'bus-driver-profile';
+  const BACKUP_KEY   = 'bus-last-backup';
+  const FORM_KEY     = 'bus-form-state';
+  const GUARANTEED   = 4; // guaranteed hours per shift
+
+  const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  let shifts         = [];
+  let defaultPayRate = 0;
+  let fortnightStart = null;
+  let profile        = {};
+
+  /* ── INIT ── */
+  function load() {
+    try { shifts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { shifts = []; }
+    try { defaultPayRate = parseFloat(localStorage.getItem(PAY_KEY)) || 0; } catch {}
+    try { fortnightStart = localStorage.getItem(FN_KEY) || null; } catch {}
+    try { profile = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}'); } catch { profile = {}; }
+    updateCount();
+    if (defaultPayRate > 0) {
+      document.getElementById('payRateInput').value = defaultPayRate.toFixed(2);
+      document.getElementById('rateDisplay').textContent = 'A$' + defaultPayRate.toFixed(2) + ' / hr (default)';
+      document.getElementById('fPayRate').value = defaultPayRate.toFixed(2);
+    }
+    if (fortnightStart) {} // restored in populateDateDropdowns()
+    // Show backup reminder if no backup or overdue
+    const lastBackup=localStorage.getItem(BACKUP_KEY);
+    const reminder=document.getElementById('backupReminder');
+    if (reminder) {
+      const overdue=!lastBackup||Math.floor((new Date()-new Date(lastBackup))/(1000*60*60*24))>=7;
+      reminder.style.display=overdue&&shifts.length>0?'flex':'none';
+    }
+    renderProfile();
+  }
+
+  function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(shifts)); updateCount(); }
+  function updateCount() { const n=shifts.length; document.getElementById('shiftCount').textContent=n+(n===1?' shift':' shifts'); }
+
+  /* ── NAVIGATION ── */
+  function showView(v) {
+    ['add','log','stats','pay','export','profile'].forEach(id=>{
+      document.getElementById('view'+cap(id)).classList.add('hidden');
+      document.getElementById('nav'+cap(id)).classList.remove('active');
+    });
+    document.getElementById('view'+cap(v)).classList.remove('hidden');
+    document.getElementById('nav'+cap(v)).classList.add('active');
+    if (v==='log')     renderLog();
+    if (v==='stats')   renderStats();
+    if (v==='profile') renderProfile();
+    if (v==='export')  showBackupStatus();
+  }
+  function cap(s) { return s[0].toUpperCase()+s.slice(1); }
+
+  // Format date as DD MM YYYY (Australian style)
+  function fmtDate(dateObj) {
+    const d = String(dateObj.getDate()).padStart(2,'0');
+    const m = String(dateObj.getMonth()+1).padStart(2,'0');
+    const y = dateObj.getFullYear();
+    return d + ' ' + m + ' ' + y;
+  }
+
+  /* ── HELPERS ── */
+  function hodToDecimal(hod) {
+    if (!hod) return null;
+    const m = hod.toUpperCase().match(/^(\d+)H(\d+)$/);
+    if (!m) return null;
+    return parseFloat((parseInt(m[1]) + parseInt(m[2])/60).toFixed(4));
+  }
+  function hodToStr(dec) {
+    if (dec == null) return '—';
+    const h=Math.floor(dec), m=Math.round((dec-h)*60);
+    return h+'h '+String(m).padStart(2,'0')+'m';
+  }
+  function calcMins(start,finish) {
+    if (!start||!finish) return 0;
+    const [sh,sm]=start.split(':').map(Number),[fh,fm]=finish.split(':').map(Number);
+    let d=(fh*60+fm)-(sh*60+sm); if(d<0)d+=1440; return d;
+  }
+  function minsToStr(mins) { return Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0')+'m'; }
+
+  /* pay calc: guaranteed 4 hrs, same rate for overtime */
+  function calcPay(hodDec, rate) {
+    if (hodDec == null || !rate) return null;
+    const paid = Math.max(GUARANTEED, hodDec);
+    const ot   = Math.max(0, hodDec - GUARANTEED);
+    const total = paid * rate;
+    return { actual: hodDec, paid, ot, rate, total };
+  }
+
+  /* ── FORM LOGIC ── */
+  function populateDateDropdowns() {
+    // Populate shift date dropdowns
+    const dayEl  = document.getElementById('fDay');
+    const yearEl = document.getElementById('fYear');
+    const fnDayEl  = document.getElementById('fnDay');
+    const fnYearEl = document.getElementById('fnYear');
+    const yr = new Date().getFullYear();
+    for (let i=1;i<=31;i++) {
+      const v=String(i).padStart(2,'0');
+      [dayEl, fnDayEl].forEach(el=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
+    }
+    for (let y=yr;y>=yr-1;y--) {
+      [yearEl, fnYearEl].forEach(el=>{ const o=document.createElement('option'); o.value=String(y); o.textContent=String(y); el.appendChild(o); });
+    }
+    // Default shift date to today
+    const today=new Date();
+    dayEl.value   = String(today.getDate()).padStart(2,'0');
+    document.getElementById('fMonth').value = String(today.getMonth()+1).padStart(2,'0');
+    yearEl.value  = String(today.getFullYear());
+    onDateChange();
+    // Restore saved fortnight start if exists
+    if (fortnightStart) {
+      const fp=fortnightStart.split('-');
+      fnDayEl.value = fp[2];
+      document.getElementById('fnMonth').value = fp[1];
+      fnYearEl.value = fp[0];
+    }
+  }
+
+  function getFormDate() {
+    const d=document.getElementById('fDay').value;
+    const m=document.getElementById('fMonth').value;
+    const y=document.getElementById('fYear').value;
+    if (!d||!m||!y) return null;
+    return y+'-'+m+'-'+d; // store as YYYY-MM-DD internally
+  }
+
+  function onDateChange() {
+    const iso = getFormDate();
+    const el  = document.getElementById('dayDisplay');
+    if (iso) {
+      const p=iso.split('-'), dt=new Date(p[0],p[1]-1,p[2]);
+      el.textContent=DAYS[dt.getDay()]; el.classList.add('filled');
+    } else { el.textContent='—'; el.classList.remove('filled'); }
+  }
+
+  function onHodChange() {
+    const val=document.getElementById('fHod').value, dec=hodToDecimal(val), box=document.getElementById('hodDecimal');
+    if (dec!=null) { document.getElementById('hodDecimalText').innerHTML='<strong>'+val.toUpperCase()+'</strong> = <strong>'+dec.toFixed(2)+' hrs</strong>'; box.classList.add('show'); }
+    else box.classList.remove('show');
+  }
+
+  function updatePayPreview() {
+    const hod  = hodToDecimal(document.getElementById('fHod').value);
+    const rate = parseFloat(document.getElementById('fPayRate').value);
+    const box  = document.getElementById('payBreakdown');
+    if (hod == null || !rate) { box.classList.remove('show'); return; }
+    const p = calcPay(hod, rate);
+    box.classList.add('show');
+    document.getElementById('pbActual').textContent      = hodToStr(p.actual);
+    document.getElementById('pbGuaranteed').textContent  = hodToStr(p.paid) + (p.ot > 0 ? ' (incl. OT)' : ' (guaranteed)');
+    document.getElementById('pbOT').textContent          = p.ot > 0 ? hodToStr(p.ot)+' ⚡' : 'None';
+    document.getElementById('pbRate').textContent        = 'A$'+rate.toFixed(2)+'/hr';
+    document.getElementById('pbTotal').textContent       = 'A$'+p.total.toFixed(2);
+  }
+
+  /* ── FORM STATE PERSISTENCE ── */
+  function saveFormState() {
+    const state = {
+      day:   document.getElementById('fDay').value,
+      month: document.getElementById('fMonth').value,
+      year:  document.getElementById('fYear').value,
+      busNo: document.getElementById('fBusNo').value,
+      shift: document.getElementById('fShift').value,
+      start: document.getElementById('fStart').value,
+      finish:document.getElementById('fFinish').value,
+      hod:   document.getElementById('fHod').value,
+      rate:  document.getElementById('fPayRate').value,
+      notes: document.getElementById('fNotes').value,
+    };
+    localStorage.setItem(FORM_KEY, JSON.stringify(state));
+  }
+
+  function restoreFormState() {
+    try {
+      const raw=localStorage.getItem(FORM_KEY);
+      if (!raw) return;
+      const s=JSON.parse(raw);
+      if (s.day)   document.getElementById('fDay').value   = s.day;
+      if (s.month) document.getElementById('fMonth').value = s.month;
+      if (s.year)  document.getElementById('fYear').value  = s.year;
+      if (s.busNo) document.getElementById('fBusNo').value = s.busNo;
+      if (s.shift) document.getElementById('fShift').value = s.shift;
+      if (s.start) document.getElementById('fStart').value = s.start;
+      if (s.finish)document.getElementById('fFinish').value= s.finish;
+      if (s.hod)   document.getElementById('fHod').value   = s.hod;
+      if (s.rate)  document.getElementById('fPayRate').value= s.rate;
+      if (s.notes) document.getElementById('fNotes').value = s.notes;
+      onDateChange();
+      if (s.hod)   { onHodChange(); }
+      if (s.start&&s.finish) updateDuration();
+      if (s.hod&&s.rate) updatePayPreview();
+    } catch(e) {}
+  }
+
+  /* ── SAVE ── */
+  function saveShift() {
+    const date  = getFormDate();
+    const busNo = document.getElementById('fBusNo').value.trim();
+    const shift = document.getElementById('fShift').value.trim();
+    if (!date||!busNo||!shift) { alert('Please fill in Date, Bus No. and Shift.'); return; }
+    const dayEl = document.getElementById('dayDisplay');
+    const rate  = parseFloat(document.getElementById('fPayRate').value) || 0;
+    shifts.unshift({
+      id: Date.now(), date,
+      day:   dayEl.classList.contains('filled') ? dayEl.textContent : '',
+      busNo, shift,
+      start:  document.getElementById('fStart').value,
+      finish: document.getElementById('fFinish').value,
+      hod:    document.getElementById('fHod').value.trim(),
+      rate,
+      notes:  document.getElementById('fNotes').value.trim(),
+    });
+    persist();
+    saveFormState(); // keep fields for reuse
+    const btn=document.getElementById('saveBtn');
+    btn.textContent='✓ SAVED!'; btn.classList.add('saved');
+    setTimeout(()=>{ btn.textContent='SAVE SHIFT'; btn.classList.remove('saved'); showView('log'); },1200);
+  }
+
+  function resetForm() {
+    ['fBusNo','fShift','fStart','fFinish','fHod','fNotes'].forEach(id=>document.getElementById(id).value='');
+    // Reset date to today
+    const today=new Date();
+    document.getElementById('fDay').value   = String(today.getDate()).padStart(2,'0');
+    document.getElementById('fMonth').value = String(today.getMonth()+1).padStart(2,'0');
+    document.getElementById('fYear').value  = String(today.getFullYear());
+    onDateChange();
+    document.getElementById('hodDecimal').classList.remove('show');
+    document.getElementById('payBreakdown').classList.remove('show');
+    if (defaultPayRate>0) document.getElementById('fPayRate').value=defaultPayRate.toFixed(2);
+    else document.getElementById('fPayRate').value='';
+    localStorage.removeItem(FORM_KEY); // clear saved state on manual clear
+  }
+
+  /* ── LOG ── */
+  function deleteShift(id) {
+    shifts=shifts.filter(s=>s.id!==id); persist(); renderLog();
+  }
+
+  function confirmDelete(id) {
+    const card = document.getElementById('card-'+id);
+    if (!card) return;
+    const existing = card.querySelector('.delete-confirm');
+    if (existing) { existing.remove(); return; }
+    const div = document.createElement('div');
+    div.className = 'delete-confirm';
+    div.innerHTML = `<span style="font-size:12px;color:#ef4444;font-weight:600;">Delete this shift?</span>
+      <button onclick="deleteShift(${id})" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;margin-left:8px;">Yes</button>
+      <button onclick="this.parentElement.remove()" style="background:#f1f5f9;color:#64748b;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;margin-left:4px;">No</button>`;
+    div.style.cssText='margin-top:10px;background:#fff0f0;border:1.5px solid #fecaca;border-radius:10px;padding:10px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;';
+    card.appendChild(div);
+  }
+
+  function renderLog() {
+    const q=(document.getElementById('searchInput').value||'').toLowerCase();
+    const list=document.getElementById('shiftList');
+    const filtered=q?shifts.filter(s=>(s.date||'').includes(q)||(s.busNo||'').toLowerCase().includes(q)||(s.shift||'').toLowerCase().includes(q)||(s.day||'').toLowerCase().includes(q)):shifts;
+    const sorted=[...filtered].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    if (!sorted.length) {
+      list.innerHTML='<div class="empty"><div class="emoji">🚌</div>'+(shifts.length===0?'No shifts yet.<br>Tap <strong style="color:#2563eb">Add</strong> to log your first day!':'No results found.')+'</div>';
+      return;
+    }
+    list.innerHTML=sorted.map(s=>{
+      const p=s.date?s.date.split('-'):null;
+      const dateStr=p?fmtDate(new Date(p[0],p[1]-1,p[2])):'—';
+      const dur=minsToStr(calcMins(s.start,s.finish));
+      const hod=hodToDecimal(s.hod);
+      const hodDisplay=s.hod?(s.hod+(hod?' ('+hod.toFixed(2)+')':'')):'—';
+      const pay=hod&&s.rate?calcPay(hod,s.rate):null;
+      const hasOT=pay&&pay.ot>0;
+
+      const payBlock = pay ? `
+        <div class="card-pay-block">
+          <div class="card-pay-row"><span class="lbl">Actual worked</span><span class="val">${hodToStr(pay.actual)}</span></div>
+          <div class="card-pay-row"><span class="lbl">Guaranteed (4h min)</span><span class="val">${hodToStr(GUARANTEED)}</span></div>
+          <div class="card-pay-row"><span class="lbl">Overtime${hasOT?'':' (none)'}</span><span class="val" style="color:${hasOT?'#f59e0b':'#94a3b8'}">${hasOT?hodToStr(pay.ot)+' ⚡':'—'}</span></div>
+          <div class="card-pay-row"><span class="lbl">Paid hours</span><span class="val">${hodToStr(pay.paid)}</span></div>
+          <div class="card-pay-row"><span class="lbl">Rate</span><span class="val">A$${pay.rate.toFixed(2)}/hr</span></div>
+          <div class="card-pay-row total"><span class="lbl">💵 Est. Pay</span><span class="val">A$${pay.total.toFixed(2)}</span></div>
+        </div>` : '';
+
+      const notesLine=s.notes?`<div class="card-notes">📝 ${s.notes}</div>`:'';
+
+      return `<div class="shift-card${hasOT?' overtime':''}" id="card-${s.id}">
+        <div class="card-header">
+          <div class="date-badge">${dateStr}</div>
+          <div class="day-label">${s.day||''}</div>
+          ${s.start&&s.finish?`<div class="duration-label">⏱ ${dur}</div>`:''}
+          ${hasOT?`<span class="ot-badge">OT</span>`:''}
+        </div>
+        <div class="card-grid">
+          <div><div class="card-field-label">Bus</div><div class="card-field-value">${s.busNo||'—'}</div></div>
+          <div><div class="card-field-label">Shift</div><div class="card-field-value">${s.shift||'—'}</div></div>
+          <div><div class="card-field-label">HOD</div><div class="card-field-value">${hodDisplay}</div></div>
+          <div><div class="card-field-label">Start</div><div class="card-field-value">${s.start||'—'}</div></div>
+          <div><div class="card-field-label">Finish</div><div class="card-field-value">${s.finish||'—'}</div></div>
+        </div>
+        ${payBlock}${notesLine}
+        <button class="delete-btn" onclick="confirmDelete(${s.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── STATS ── */
+  function getFortnightKey(dateStr) {
+    if (!fortnightStart || !dateStr) return null;
+    const p=dateStr.split('-'), d=new Date(p[0],p[1]-1,p[2]);
+    const fp=fortnightStart.split('-'), f=new Date(fp[0],fp[1]-1,fp[2]);
+    const diffDays=Math.floor((d-f)/(1000*60*60*24));
+    if (diffDays<0) return null;
+    const fnNum=Math.floor(diffDays/14);
+    const fnStart=new Date(f); fnStart.setDate(f.getDate()+fnNum*14);
+    return fnStart.toISOString().split('T')[0];
+  }
+
+  function renderStats() {
+    const el=document.getElementById('statsContent');
+    if (!shifts.length) { el.innerHTML='<div class="empty"><div class="emoji">📊</div>No shifts logged yet.</div>'; return; }
+
+    let totalMins=0, totalPaidHrs=0, totalOTHrs=0, totalPay=0, payCount=0;
+    shifts.forEach(s=>{
+      totalMins+=calcMins(s.start,s.finish);
+      const hod=hodToDecimal(s.hod);
+      if (hod!=null&&s.rate) {
+        const p=calcPay(hod,s.rate);
+        totalPaidHrs+=p.paid; totalOTHrs+=p.ot; totalPay+=p.total; payCount++;
+      }
+    });
+
+    // Fortnights
+    const fnMap={};
+    shifts.forEach(s=>{
+      const key=getFortnightKey(s.date);
+      if (!key) return;
+      if (!fnMap[key]) fnMap[key]={mins:0,paidHrs:0,otHrs:0,pay:0,count:0};
+      fnMap[key].mins+=calcMins(s.start,s.finish);
+      const hod=hodToDecimal(s.hod);
+      if (hod!=null&&s.rate) {
+        const p=calcPay(hod,s.rate);
+        fnMap[key].paidHrs+=p.paid; fnMap[key].otHrs+=p.ot; fnMap[key].pay+=p.total; fnMap[key].count++;
+      }
+    });
+
+    // Months
+    const monthMap={};
+    shifts.forEach(s=>{
+      if (!s.date) return;
+      const p=s.date.split('-'), key=p[0]+'-'+p[1];
+      if (!monthMap[key]) monthMap[key]={mins:0,paidHrs:0,otHrs:0,pay:0,count:0,label:MONTHS[parseInt(p[1])-1]+' '+p[0]};
+      monthMap[key].mins+=calcMins(s.start,s.finish);
+      const hod=hodToDecimal(s.hod);
+      if (hod!=null&&s.rate) {
+        const pm=calcPay(hod,s.rate);
+        monthMap[key].paidHrs+=pm.paid; monthMap[key].otHrs+=pm.ot; monthMap[key].pay+=pm.total; monthMap[key].count++;
+      }
+    });
+
+    // Financial Year (Australia: 1 Jul – 30 Jun)
+    function getFYKey(dateStr) {
+      if (!dateStr) return null;
+      const p=dateStr.split('-'), yr=parseInt(p[0]), mo=parseInt(p[1]);
+      // If month >= July (7), FY starts this year; else starts previous year
+      return mo>=7 ? yr+'-'+(yr+1) : (yr-1)+'-'+yr;
+    }
+    const fyMap={};
+    shifts.forEach(s=>{
+      const key=getFYKey(s.date);
+      if (!key) return;
+      if (!fyMap[key]) fyMap[key]={mins:0,paidHrs:0,otHrs:0,pay:0,count:0};
+      fyMap[key].mins+=calcMins(s.start,s.finish);
+      const hod=hodToDecimal(s.hod);
+      if (hod!=null&&s.rate) {
+        const pf=calcPay(hod,s.rate);
+        fyMap[key].paidHrs+=pf.paid; fyMap[key].otHrs+=pf.ot; fyMap[key].pay+=pf.total; fyMap[key].count++;
+      }
+    });
+
+    // Current FY key
+    const todayFY=getFYKey(new Date().toISOString().split('T')[0]);
+
+    const fnRows=Object.entries(fnMap).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,data])=>{
+      const fp=key.split('-'), fs=new Date(fp[0],fp[1]-1,fp[2]);
+      const fe=new Date(fs); fe.setDate(fs.getDate()+13);
+      const lbl=fmtDate(fs)+' – '+fmtDate(fe);
+      const today=new Date(); const todayKey=getFortnightKey(today.toISOString().split('T')[0]);
+      const isCurrent=todayKey===key;
+      return `<div class="period-row">
+        <div class="period-top">
+          <div class="period-label">${isCurrent?'<span class="fortnight-badge">CURRENT</span> ':''}${lbl}</div>
+          ${data.count>0?`<div class="period-pay">A$${data.pay.toFixed(2)}</div>`:''}
+        </div>
+        <div class="period-detail">
+          <span>⏱ ${minsToStr(data.mins)} worked</span>
+          <span>💰 ${hodToStr(data.paidHrs)} paid</span>
+          ${data.otHrs>0?`<span style="color:#f59e0b">⚡ ${hodToStr(data.otHrs)} OT</span>`:''}
+          <span>${shifts.filter(s=>getFortnightKey(s.date)===key).length} shifts</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    const monthRows=Object.entries(monthMap).sort((a,b)=>b[0].localeCompare(a[0])).map(([,data])=>{
+      return `<div class="period-row">
+        <div class="period-top">
+          <div class="period-label">${data.label}</div>
+          ${data.count>0?`<div class="period-pay">A$${data.pay.toFixed(2)}</div>`:''}
+        </div>
+        <div class="period-detail">
+          <span>⏱ ${minsToStr(data.mins)} worked</span>
+          <span>💰 ${hodToStr(data.paidHrs)} paid</span>
+          ${data.otHrs>0?`<span style="color:#f59e0b">⚡ ${hodToStr(data.otHrs)} OT</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    const fyRows=Object.entries(fyMap).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,data])=>{
+      const [startYr, endYr]=key.split('-');
+      const lbl=`FY ${startYr}–${endYr} (1 Jul ${startYr} – 30 Jun ${endYr})`;
+      const isCurrent=key===todayFY;
+      return `<div class="period-row">
+        <div class="period-top">
+          <div class="period-label">${isCurrent?'<span class="fortnight-badge">CURRENT FY</span> ':''}${lbl}</div>
+          ${data.count>0?`<div class="period-pay">A$${data.pay.toFixed(2)}</div>`:''}
+        </div>
+        <div class="period-detail">
+          <span>⏱ ${minsToStr(data.mins)} worked</span>
+          <span>💰 ${hodToStr(data.paidHrs)} paid</span>
+          ${data.otHrs>0?`<span style="color:#f59e0b">⚡ ${hodToStr(data.otHrs)} OT</span>`:''}
+          <span>${shifts.filter(s=>getFYKey(s.date)===key).length} shifts</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    el.innerHTML=`
+      <div class="card">
+        <div class="section-title">📊 Overall Totals</div>
+        <div class="stats-grid">
+          <div class="stat-box"><div class="stat-value">${shifts.length}</div><div class="stat-label">Total Shifts</div></div>
+          <div class="stat-box"><div class="stat-value">${minsToStr(totalMins)}</div><div class="stat-label">Hours Worked</div></div>
+          <div class="stat-box"><div class="stat-value" style="color:#f59e0b">${hodToStr(totalOTHrs)}</div><div class="stat-label">Overtime Hrs</div></div>
+          <div class="stat-box"><div class="stat-value green">${payCount>0?'A$'+totalPay.toFixed(2):'—'}</div><div class="stat-label">Est. Total Pay</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">📅 By Fortnight</div>
+        ${fnRows||'<div style="color:#94a3b8;font-size:13px">Set your fortnight start date in the Pay tab first.</div>'}
+      </div>
+      <div class="card">
+        <div class="section-title">🗓️ By Month</div>
+        ${monthRows||'<div style="color:#94a3b8;font-size:13px">Not enough data yet</div>'}
+      </div>
+      <div class="card">
+        <div class="section-title">💼 By Financial Year</div>
+        ${fyRows||'<div style="color:#94a3b8;font-size:13px">Not enough data yet</div>'}
+      </div>`;
+  }
+
+  /* ── PAY SETTINGS ── */
+  function savePayRate() {
+    const val=parseFloat(document.getElementById('payRateInput').value);
+    if (!val||val<=0) { alert('Please enter a valid rate.'); return; }
+    defaultPayRate=val; localStorage.setItem(PAY_KEY,val.toString());
+    document.getElementById('rateDisplay').textContent='A$'+val.toFixed(2)+' / hr (default) ✓';
+    document.getElementById('fPayRate').value=val.toFixed(2);
+    updatePayPreview();
+  }
+
+  function saveFortnightStart() {
+    const d=document.getElementById('fnDay').value;
+    const m=document.getElementById('fnMonth').value;
+    const y=document.getElementById('fnYear').value;
+    if (!d||!m||!y) return;
+    fortnightStart=y+'-'+m+'-'+d;
+    localStorage.setItem(FN_KEY, fortnightStart);
+  }
+
+  /* ── EXPORT ── */
+  function exportCSV() {
+    if (!shifts.length) { alert('No shifts to export.'); return; }
+    function getFYKey(dateStr) {
+      if (!dateStr) return '';
+      const p=dateStr.split('-'), yr=parseInt(p[0]), mo=parseInt(p[1]);
+      return mo>=7 ? 'FY '+yr+'-'+(yr+1) : 'FY '+(yr-1)+'-'+yr;
+    }
+    const headers=['Date','Day','Financial Year','Bus No','Shift','Start','Finish','Worked Hrs','HOD','HOD Decimal','Guaranteed Hrs','Overtime Hrs','Paid Hrs','Rate (A$/hr)','Est Pay (AUD)','Notes'];
+    const rows=shifts.map(s=>{
+      const hod=hodToDecimal(s.hod);
+      const pay=hod&&s.rate?calcPay(hod,s.rate):null;
+      return [
+        s.date, s.day, getFYKey(s.date), s.busNo, s.shift, s.start, s.finish,
+        minsToStr(calcMins(s.start,s.finish)),
+        s.hod, hod?hod.toFixed(2):'',
+        pay?GUARANTEED:'', pay?pay.ot.toFixed(2):'', pay?pay.paid.toFixed(2):'',
+        s.rate||'', pay?pay.total.toFixed(2):'', s.notes||''
+      ].map(v=>'"'+(v||'').toString().replace(/"/g,'""')+'"').join(',');
+    });
+    const csv='\uFEFF'+[headers.join(','),...rows].join('\n');
+    const filename='shift-log-'+new Date().toISOString().split('T')[0]+'.csv';
+    try {
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const reader=new FileReader();
+      reader.onload=function(e){
+        const a=document.createElement('a');
+        a.href=e.target.result;
+        a.download=filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Save backup timestamp
+        const now=new Date().toISOString();
+        localStorage.setItem(BACKUP_KEY, now);
+        showBackupStatus();
+      };
+      reader.readAsDataURL(blob);
+    } catch(e) {
+      const w=window.open('','_blank');
+      w.document.write('<pre>'+csv.replace(/</g,'&lt;')+'</pre>');
+      w.document.title=filename;
+    }
+  }
+
+  function showBackupStatus() {
+    const el=document.getElementById('lastBackupNote');
+    if (!el) return;
+    const last=localStorage.getItem(BACKUP_KEY);
+    if (!last) {
+      el.innerHTML='<div style="background:#fff0f0;border:1.5px solid #fecaca;border-radius:10px;padding:10px 13px;font-size:13px;color:#ef4444;font-weight:600;margin-bottom:4px;">❌ No backup yet — download your CSV now!</div>';
+      return;
+    }
+    const lastDate=new Date(last);
+    const daysSince=Math.floor((new Date()-lastDate)/(1000*60*60*24));
+    const dateStr=fmtDate(lastDate);
+    if (daysSince>=7) {
+      el.innerHTML=`<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:10px 13px;font-size:13px;color:#c2410c;font-weight:600;">⚠️ Last backup: ${dateStr} (${daysSince} days ago) — time to export again!</div>`;
+    } else {
+      el.innerHTML=`<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 13px;font-size:13px;color:#15803d;font-weight:600;">✅ Last backup: ${dateStr} (${daysSince===0?'today':daysSince+' day'+(daysSince===1?'':'s')+' ago'})</div>`;
+    }
+  }
+
+  /* ── PROFILE ── */
+  function renderProfile() {
+    const p = profile;
+    const name = p.name || '';
+    document.getElementById('pdName').textContent    = name || 'Your Name';
+    document.getElementById('pdEmpId').textContent   = 'Employee ID: ' + (p.empId || '—');
+    document.getElementById('pdDepot').textContent   = 'Depot: ' + (p.depot || '—');
+    document.getElementById('pdDepot2').textContent  = p.depot || '—';
+    document.getElementById('pdLicence').textContent = p.licence || '—';
+    document.getElementById('pdPhone').textContent   = p.phone || '—';
+    document.getElementById('pdEmail').textContent   = p.email || '—';
+    // style empty values
+    ['pdDepot2','pdLicence','pdPhone','pdEmail'].forEach(id=>{
+      const el=document.getElementById(id);
+      el.classList.toggle('empty', !p[id.replace('pd','').toLowerCase()] && el.textContent==='—');
+    });
+    // update header subtitle if name set
+    if (name) document.querySelector('.header-sub').textContent = name.toUpperCase();
+  }
+
+  function toggleProfileEdit(show) {
+    document.getElementById('profileDisplay').classList.toggle('hidden', show);
+    document.getElementById('profileEdit').classList.toggle('hidden', !show);
+    if (show) {
+      document.getElementById('peName').value    = profile.name    || '';
+      document.getElementById('peEmpId').value   = profile.empId   || '';
+      document.getElementById('peDepot').value   = profile.depot   || '';
+      document.getElementById('peLicence').value = profile.licence || '';
+      document.getElementById('pePhone').value   = profile.phone   || '';
+      document.getElementById('peEmail').value   = profile.email   || '';
+    }
+  }
+
+  function saveProfile() {
+    profile = {
+      name:    document.getElementById('peName').value.trim(),
+      empId:   document.getElementById('peEmpId').value.trim(),
+      depot:   document.getElementById('peDepot').value.trim(),
+      licence: document.getElementById('peLicence').value.trim(),
+      phone:   document.getElementById('pePhone').value.trim(),
+      email:   document.getElementById('peEmail').value.trim(),
+    };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    renderProfile();
+    toggleProfileEdit(false);
+  }
+
+  /* ── IMPORT ── */
+  function importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const status = document.getElementById('importStatus');
+      try {
+        const lines = e.target.result.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+        if (lines.length < 2) throw new Error('No data found in file.');
+
+        // Find header row
+        const headers = lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
+        const col = name => headers.indexOf(name);
+
+        const dateIdx   = col('date');
+        const dayIdx    = col('day');
+        const busIdx    = col('bus no');
+        const shiftIdx  = col('shift');
+        const startIdx  = col('start');
+        const finishIdx = col('finish');
+        const hodIdx    = col('hod');
+        const rateIdx   = col('rate (a$/hr)');
+        const notesIdx  = col('notes');
+
+        if (dateIdx === -1 || busIdx === -1) throw new Error('Invalid CSV format. Please use a file exported from this app.');
+
+        function parseRow(line) {
+          const result = [];
+          let inQ = false, cur = '';
+          for (let i=0;i<line.length;i++) {
+            const ch=line[i];
+            if (ch==='"') { inQ=!inQ; }
+            else if (ch===','&&!inQ) { result.push(cur.trim()); cur=''; }
+            else cur+=ch;
+          }
+          result.push(cur.trim());
+          return result;
+        }
+
+        // Existing dates+shifts for duplicate check
+        const existing = new Set(shifts.map(s=>s.date+'|'+s.shift));
+
+        let added=0, skipped=0;
+        for (let i=1;i<lines.length;i++) {
+          const cols = parseRow(lines[i]);
+          if (cols.length < 3) continue;
+          const date  = cols[dateIdx]  || '';
+          const shift = shiftIdx>=0 ? cols[shiftIdx] || '' : '';
+          const key   = date+'|'+shift;
+          if (existing.has(key)) { skipped++; continue; }
+          shifts.push({
+            id:     Date.now() + i,
+            date,
+            day:    dayIdx>=0    ? cols[dayIdx]    || '' : '',
+            busNo:  busIdx>=0    ? cols[busIdx]    || '' : '',
+            shift,
+            start:  startIdx>=0  ? cols[startIdx]  || '' : '',
+            finish: finishIdx>=0 ? cols[finishIdx] || '' : '',
+            hod:    hodIdx>=0    ? cols[hodIdx]    || '' : '',
+            rate:   rateIdx>=0   ? parseFloat(cols[rateIdx]) || 0 : 0,
+            notes:  notesIdx>=0  ? cols[notesIdx]  || '' : '',
+          });
+          existing.add(key);
+          added++;
+        }
+
+        persist();
+        status.style.display='block';
+        status.style.background = added>0 ? '#f0fdf4' : '#fefce8';
+        status.style.border     = added>0 ? '1.5px solid #86efac' : '1.5px solid #fde68a';
+        status.style.color      = added>0 ? '#15803d' : '#92400e';
+        status.textContent      = added>0
+          ? `✅ ${added} shift${added===1?'':'s'} imported!${skipped>0?' ('+skipped+' duplicates skipped)':''}`
+          : `⚠️ No new shifts found. ${skipped} duplicate${skipped===1?'':'s'} skipped.`;
+        // Reset file input
+        document.getElementById('importFile').value='';
+      } catch(err) {
+        const status=document.getElementById('importStatus');
+        status.style.display='block';
+        status.style.background='#fff0f0';
+        status.style.border='1.5px solid #fecaca';
+        status.style.color='#ef4444';
+        status.textContent='❌ Error: '+err.message;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  load();
+  populateDateDropdowns();
+  restoreFormState();
+  // Auto-save form state on any input change
+  ['fDay','fMonth','fYear','fBusNo','fShift','fStart','fFinish','fHod','fPayRate','fNotes'].forEach(id=>{
+    const el=document.getElementById(id);
+    if (el) el.addEventListener('input', saveFormState);
+    if (el) el.addEventListener('change', saveFormState);
+  });
+  showView('add');
+</script>
+</body>
+</html>
